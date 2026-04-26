@@ -456,12 +456,13 @@ def apply_scale(module, scales_list, input_feat_dict=None):
             layer.cuda()
         scales.cuda()
 
-        if isinstance(prev_op, nn.Linear):
+        # prev_op（前一个算子，通常是产生激活值的层）对layer（后一个算子，通常是线性层）的scale进行调整
+        if isinstance(prev_op, nn.Linear): # 线性层对线性层 
             assert len(layers) == 1
             scale_fc_fc(prev_op, layers[0], scales)
-        elif isinstance(prev_op, (nn.LayerNorm, LlamaRMSNorm, Qwen2RMSNorm)):
+        elif isinstance(prev_op, (nn.LayerNorm, LlamaRMSNorm, Qwen2RMSNorm)): # 归一化层对线性层
             scale_ln_fcs(prev_op, layers, scales)
-        elif isinstance(prev_op, (nn.GELU, BloomGelu, GELUActivation, nn.SiLU)):
+        elif isinstance(prev_op, (nn.GELU, BloomGelu, GELUActivation, nn.SiLU)):  # 激活函数层对线性层
             new_module = ScaledActivation(prev_op, scales)
             set_op_by_name(module, prev_op_name, new_module)
             scale_gelu_fc(prev_op, layers[0], scales)
