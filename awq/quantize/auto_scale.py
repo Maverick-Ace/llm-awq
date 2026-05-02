@@ -35,12 +35,17 @@ def scale_ln_fcs(ln, fcs, scales):
     if not isinstance(fcs, list):
         fcs = [fcs]
 
+    # 将 scale 转换到相同的设备和数据类型
     scales = scales.to(ln.weight.device).to(ln.weight.dtype)
 
+    # 1. 对应将 s^{-1} 嵌入 layernorm 层 
+    # 即 layernorm.weight = layernorm.weight / s
     ln.weight.div_(scales)
     if hasattr(ln, "bias") and ln.bias is not None:
         ln.bias.div_(scales)
 
+    # 2. 对应 W * s，将 s 嵌入随后连接的 Linear 层的权重（原始权重 W）
+    # 等效于 Y = (X * s^{-1}) * (W * s)，从而抵消了操作的影响
     for fc in fcs:
         fc.weight.mul_(scales.view(1, -1))
 
